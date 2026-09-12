@@ -148,12 +148,12 @@
     font-size:12px;border-radius:999px;padding:7px 13px}
   .gkswitch:active{background:#e1e5f3}
   .gkgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-  .gkbtn{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:13px 8px;font-weight:800;font-size:14px;
-    display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink);box-shadow:var(--shadow)}
-  .gkbtn.save{border-color:var(--ok);color:var(--ok)}
-  .gkbtn.conc{border-color:var(--bad);color:var(--bad)}
-  .gkbtn.riv{grid-column:1/-1;border-color:var(--bad);background:#fff6f6;color:var(--bad)}
-  .gkbtn:active{transform:translateY(1px);background:#f7f8fc}
+  .gkbtn{border:1.5px solid transparent;border-radius:14px;padding:14px 8px;font-weight:800;font-size:14px;
+    display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:var(--shadow);transition:transform .1s,filter .1s}
+  .gkbtn.save{background:linear-gradient(180deg,#eafbf1,#dcf6e7);color:#177a42;border-color:#bfead2}
+  .gkbtn.conc{background:linear-gradient(180deg,#fff0f0,#ffe1e1);color:#b83a3a;border-color:#f3c6c6}
+  .gkbtn.riv{grid-column:1/-1;background:linear-gradient(180deg,#fff0f0,#ffe1e1);color:#b83a3a;border-color:#f3c6c6}
+  .gkbtn:active{transform:translateY(1px);filter:brightness(.96)}
 
   /* ---------- Tabs ---------- */
   .tabs{display:flex;gap:4px;background:#eef0f8;border-radius:13px;padding:4px;margin:14px 0}
@@ -184,13 +184,14 @@
   .agroup{margin-top:14px}
   .agroup h4{margin:0 2px 7px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:800}
   .agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .abtn{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:15px 10px;font-weight:800;font-size:15px;color:var(--ink);text-align:center;box-shadow:var(--shadow)}
-  .abtn:active{transform:translateY(1px)}
+  .abtn{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:16px 10px;font-weight:800;font-size:15px;color:var(--ink);
+    text-align:center;box-shadow:var(--shadow);transition:transform .1s,filter .1s}
+  .abtn:active{transform:translateY(1px);filter:brightness(.97)}
   .abtn.hero{grid-column:1/-1;background:linear-gradient(180deg,var(--gold-l),var(--gold) 60%,var(--gold-d));color:var(--navy);font-size:20px;padding:20px;
     box-shadow:0 6px 16px rgba(224,173,0,.35)}
-  .abtn.pos{border-color:var(--ok);color:var(--ok)}
-  .abtn.neg{border-color:var(--bad);color:var(--bad)}
-  .abtn.warn{border-color:var(--warn);color:var(--warn)}
+  .abtn.pos{background:linear-gradient(180deg,#eafbf1,#dcf6e7);color:#177a42;border-color:#bfead2}
+  .abtn.neg{background:linear-gradient(180deg,#fff0f0,#ffe1e1);color:#b83a3a;border-color:#f3c6c6}
+  .abtn.warn{background:linear-gradient(180deg,#fff7e6,#ffedc2);color:#8a5900;border-color:#f0dba3}
 
   /* ---------- Toast ---------- */
   #toast{position:fixed;left:0;right:0;bottom:calc(14px + var(--safe-b));display:flex;justify-content:center;z-index:80;pointer-events:none}
@@ -199,6 +200,20 @@
   #toast.show .in{transform:translateY(0);opacity:1}
   #toast .in b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #toast .in button{background:var(--gold);color:var(--navy);font-weight:900;border-radius:999px;padding:7px 13px;font-size:12px;flex:none}
+  #toast .dot{width:9px;height:9px;border-radius:50%;flex:none;background:#7d84a3}
+  #toast .dot.pos{background:var(--ok)}
+  #toast .dot.neg{background:var(--bad)}
+  #toast .dot.warn{background:var(--warn)}
+
+  /* ---------- Modal de confirmación (propio, sin confirm()/alert() nativos) ---------- */
+  .cmodal{padding:8px 6px 4px;text-align:center}
+  .cmodal .cicon{width:52px;height:52px;border-radius:50%;background:#fdeaea;color:var(--bad);display:flex;align-items:center;justify-content:center;margin:2px auto 12px}
+  .cmodal h3{margin:0 0 8px;font-size:18px;font-weight:900;color:var(--ink)}
+  .cmodal p{margin:0 0 20px;font-size:14px;color:var(--muted);line-height:1.55}
+  .cmodal .crow{display:flex;gap:10px}
+  .cmodal .crow .btn{flex:1}
+  .btn.danger2{background:linear-gradient(180deg,#ff8f8f,var(--bad));color:#fff;box-shadow:0 6px 16px rgba(214,69,69,.35)}
+  .btn.danger2:active{box-shadow:0 2px 8px rgba(214,69,69,.3)}
 
   /* ---------- Tables ---------- */
   .twrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:13px;border:1px solid var(--line);background:#fff}
@@ -260,7 +275,7 @@
 </head>
 <body>
 <div id="app"></div>
-<div id="toast"><div class="in"><b id="toastText"></b><button id="toastUndo">DESHACER</button></div></div>
+<div id="toast"><div class="in"><span class="dot" id="toastDot"></span><b id="toastText"></b><button id="toastUndo">DESHACER</button></div></div>
 <div id="printArea"></div>
 <input type="file" id="filePick" accept="image/*" class="hide">
 <input type="file" id="jsonPick" accept="application/json,.json" class="hide">
@@ -350,8 +365,15 @@ const GK_GROUPS = [
 function actionCls(k){
   if(k==="gol") return "hero";
   if(["contra","gol7m","golPortero","recuperacion","blocaje","parada","parada7m","asistencia","prov7m"].includes(k)) return "pos";
-  if(["tiroFuera","tiroParado","perdida","fallo7m","comete7m","golEncajado","golEnc7m"].includes(k)) return "neg";
-  if(["dosmin","amarilla","roja"].includes(k)) return "warn";
+  if(["tiroFuera","tiroParado","perdida","fallo7m","comete7m","golEncajado","golEnc7m","roja"].includes(k)) return "neg";
+  if(["dosmin","amarilla"].includes(k)) return "warn";
+  return "";
+}
+function actionTone(tipo){
+  if(tipo==="golRival") return "neg";
+  const w = S.weights[tipo]||0;
+  if(w>0) return "pos";
+  if(w<0) return "neg";
   return "";
 }
 function defaultWeights(){ const w={}; for(const k in ACC) w[k]=ACC[k].pts; return w; }
@@ -413,7 +435,7 @@ function load(){
   }catch(e){}
   return fresh();
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert("No se pudo guardar (almacenamiento lleno o bloqueado)."); } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alertModal("No se pudo guardar", "El almacenamiento del navegador está lleno o bloqueado."); } }
 
 let _crestImg = null;
 function preloadCrest(){
@@ -430,7 +452,16 @@ const player = id => S.roster.find(p => p.id===id);
 /* ---------- utilidades ---------- */
 function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
-function hueOf(id){ let h=0; for(const c of id) h=(h*31 + c.charCodeAt(0))>>>0; return h%360; }
+function hashCode(id){ let h=0; for(const c of id) h=(h*31 + c.charCodeAt(0))>>>0; return h; }
+function hueOf(id){
+  // reparte los tonos en partes iguales de 360° según el tamaño de la plantilla:
+  // con N jugadores, la separación mínima garantizada entre dos cualesquiera es 360/N,
+  // así nunca hay dos colores parecidos por casualidad (a diferencia de un hash aleatorio)
+  const idx = S.roster.findIndex(p => p.id===id);
+  const n = Math.max(S.roster.length, 1);
+  const base = idx>=0 ? idx : (hashCode(id) % n);
+  return Math.round(base * (360/n)) % 360;
+}
 function initials(nick){
   const parts = nick.trim().split(/\s+/);
   if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
@@ -438,9 +469,11 @@ function initials(nick){
 }
 function avatar(p, cls=""){
   const h = hueOf(p.id);
+  // hsl como respaldo; oklch (perceptualmente uniforme) encima para que todos los
+  // tonos —incluidos rojos y amarillos— se vean igual de distintos entre sí
   const style = p.foto
     ? `background-image:url('${p.foto}')`
-    : `background-color:hsl(${h} 45% 42%)`;
+    : `background-color:hsl(${h} 42% 40%);background-color:oklch(53% 0.11 ${h})`;
   const c = `av ${cls} ${p.puesto==="portero"?"gk":""} ${p.cat==="juvenil"?"juv":""}`;
   return `<span class="${c}" style="${style}">${p.foto?"":esc(initials(p.apodo))}</span>`;
 }
@@ -574,7 +607,7 @@ function addEvent(tipo, jugador){
   const e = {id:uid(), t:Date.now(), periodo:m.periodo||1, tipo, jugador:jugador||null};
   m.events.push(e);
   save(); vibrate(14);
-  toast(actionText(e), true);
+  toast(actionText(e), true, actionTone(e.tipo));
   render();
 }
 function actionText(e){
@@ -600,10 +633,11 @@ function deleteEvent(eid){
    TOAST
    ============================================================ */
 let toastTimer=null;
-function toast(text, undo){
+function toast(text, undo, tone){
   const el = document.getElementById("toast");
   document.getElementById("toastText").textContent = text;
   document.getElementById("toastUndo").style.display = undo ? "" : "none";
+  document.getElementById("toastDot").className = "dot" + (tone?" "+tone:"");
   el.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=> el.classList.remove("show"), 3600);
@@ -612,6 +646,36 @@ document.getElementById("toastUndo").addEventListener("click", ()=>{
   undoLast();
   document.getElementById("toast").classList.remove("show");
 });
+
+/* ============================================================
+   MODAL de confirmación/aviso propio (sustituye a confirm()/alert() nativos)
+   ============================================================ */
+function confirmModal(opts){
+  return new Promise(resolve=>{
+    const ov = document.createElement("div"); ov.className="overlay"; ov.id="confirmOv";
+    const btnsHtml = opts.onlyOk
+      ? `<button class="btn gold" data-cm="ok" style="width:100%">${esc(opts.confirmText||"Entendido")}</button>`
+      : `<div class="crow">
+          <button class="btn ghost" data-cm="cancel">${esc(opts.cancelText||"Cancelar")}</button>
+          <button class="btn ${opts.danger?'danger2':'gold'}" data-cm="ok">${esc(opts.confirmText||"Confirmar")}</button>
+        </div>`;
+    ov.innerHTML = `<div class="sheet"><div class="cmodal">
+      ${opts.danger?`<div class="cicon">${ic('trash',22)}</div>`:''}
+      <h3>${esc(opts.title||"")}</h3>
+      ${opts.body?`<p>${esc(opts.body)}</p>`:''}
+      ${btnsHtml}
+    </div></div>`;
+    function done(v){ ov.remove(); resolve(v); }
+    ov.addEventListener("click", e=>{
+      if(e.target===ov) return done(false);
+      const b = e.target.closest("[data-cm]");
+      if(!b) return;
+      done(b.dataset.cm==="ok");
+    });
+    document.body.appendChild(ov);
+  });
+}
+function alertModal(title, body){ return confirmModal({title, body, onlyOk:true}); }
 
 /* ============================================================
    RENDER
@@ -850,7 +914,7 @@ function viewMatch(){
     ${m.periodo===1
       ? `<button class="btn soft" data-a="descanso">${ic('pause',14)} Descanso</button>`
       : `<span class="grow"></span>`}
-    <button class="btn gold" data-a="finalizar">${ic('flag',16)} Finalizar</button>
+    <button class="btn" data-a="finalizar">${ic('flag',16)} Finalizar</button>
   </div>`;
 
   return topbar((m.rival?("vs "+m.rival):"Partido"), `<button class="hbtn" data-a="go" data-v="home">Inicio</button>`) + `<main>
@@ -884,7 +948,7 @@ function statsBlock(m, forPrint){
       <td class="${r.perdidas?'neg':''}">${r.perdidas||""}</td>
       <td class="${r.recup?'pos':''}">${r.recup||""}</td>
       <td class="${r.blocaje?'pos':''}">${r.blocaje||""}</td>
-      <td>${[r.dosmin?r.dosmin+"×2′":"",r.amarilla?"A":"",r.roja?"R":""].filter(Boolean).join(" ")||""}</td>
+      <td>${[r.dosmin?r.dosmin+"×2′":"",r.amarilla?"A":"",r.roja?'<span style="color:var(--bad);font-weight:900">R</span>':""].filter(Boolean).join(" ")||""}</td>
       <td class="val ${r.val>0?'pos':r.val<0?'neg':''}">${r.val.toFixed(1)}</td>
     </tr>`).join("")}
     </tbody></table></div>`;
@@ -1230,6 +1294,28 @@ function drawReport(m, opts){
   });
   y += 98;
 
+  // Línea de tiempo / parciales
+  const goalsSeq = m.events.filter(e => OURS.includes(e.tipo) || THEIRS.includes(e.tipo));
+  if(goalsSeq.length){
+    x.fillStyle="#5b6178"; x.font=F(13,"800"); x.fillText("LÍNEA DE TIEMPO", 40, y+8); y+=24;
+    const avail = W-80;
+    const bw = Math.max(6, Math.min(16, avail/goalsSeq.length - 3));
+    let bx = 40;
+    goalsSeq.forEach(e=>{
+      x.fillStyle = OURS.includes(e.tipo) ? "#1b2a6b" : "#d64545";
+      roundRect(x, bx, y, bw, 22, 3); x.fill();
+      bx += bw + 3;
+    });
+    y += 36;
+    const bigRuns = runs(m).filter(r=>r.count>=3);
+    if(bigRuns.length){
+      x.font=F(13,"600"); x.fillStyle="#171b2e";
+      const rtxt = bigRuns.map(r=> (r.team==="n"?"Arteixo":m.rival||"Rival")+" ×"+r.count).join("   ·   ");
+      x.fillText("Rachas: "+rtxt, 40, y);
+      y += 26;
+    } else { y += 6; }
+  }
+
   const campoCols = [
     ["Jugador", 250, r=>labelPDF(r.p), "l"],
     ["Goles", 62, r=> r.contra? `${r.goles} (${r.contra})` : String(r.goles)],
@@ -1400,18 +1486,21 @@ jsonPick.addEventListener("change", ()=>{
   if(!f) return;
   const rd = new FileReader();
   rd.onload = ()=>{
+    let obj;
     try{
-      const obj = JSON.parse(rd.result);
+      obj = JSON.parse(rd.result);
       if(!obj.roster || !obj.matches) throw 0;
-      if(confirm("Esto reemplazará la plantilla y todos los partidos de este móvil. ¿Continuar?")){
+    }catch(e){ alertModal("Archivo no válido", "No se pudo leer esta copia de seguridad."); return; }
+    confirmModal({title:"Importar copia de seguridad", body:"Esto reemplaza la plantilla y todos los partidos de este móvil por los del archivo.", confirmText:"Importar", danger:true})
+      .then(ok=>{
+        if(!ok) return;
         S = obj;
         S.weights = Object.assign(defaultWeights(), S.weights||{});
         S.team = Object.assign({name:"Arteixo Balonmán",crest:null}, S.team||{});
         preloadCrest();
         save(); go("home");
         toast("Copia importada", false);
-      }
-    }catch(e){ alert("Archivo no válido."); }
+      });
   };
   rd.readAsText(f);
 });
@@ -1447,7 +1536,7 @@ document.addEventListener("click", e=>{
   switch(a){
     case "go":
       if(b.dataset.v==="nuevo" && activeMatch()){
-        alert("Ya hay un partido en curso. Finalízalo antes de empezar otro.");
+        alertModal("Ya hay un partido en curso", "Finalízalo antes de empezar otro.");
         go("match",{tab:"pista"}); break;
       }
       go(b.dataset.v); break;
@@ -1480,8 +1569,8 @@ document.addEventListener("click", e=>{
       readDraftInputs();
       const d = V.draft;
       const sede = document.querySelector("#f_sede .on")?.dataset.sede || d.sede;
-      if(!d.rival.trim()){ alert("Escribe el nombre del rival."); break; }
-      if(!d.titulares.portero){ alert("Convoca y elige qué portero empieza."); break; }
+      if(!d.rival.trim()){ alertModal("Falta el rival", "Escribe el nombre del equipo rival."); break; }
+      if(!d.titulares.portero){ alertModal("Falta el portero", "Convoca y elige qué portero empieza."); break; }
       const conv = [...d.conv];
       [d.titulares.portero, ...d.titulares.campo].forEach(x=>{ if(x && !conv.includes(x)) conv.push(x); });
       const m = {
@@ -1538,10 +1627,12 @@ document.addEventListener("click", e=>{
     case "delEvent": deleteEvent(id); break;
     case "finalizar": {
       const m = activeMatch();
-      if(confirm("¿Finalizar el partido? Podrás volver a editarlo desde el resumen.")){
-        m.finalizado = true; m.finishedAt = Date.now();
-        save(); go("export",{id:m.id});
-      }
+      confirmModal({title:"¿Finalizar el partido?", body:"Podrás volver a editarlo desde el resumen si hace falta.", confirmText:"Finalizar"})
+        .then(ok=>{
+          if(!ok) return;
+          m.finalizado = true; m.finishedAt = Date.now();
+          save(); go("export",{id:m.id});
+        });
       break;
     }
     /* ---- export ---- */
@@ -1558,7 +1649,7 @@ document.addEventListener("click", e=>{
     case "csv": csvExport(matchById(id)); break;
     case "reopen": {
       const m = matchById(id);
-      if(activeMatch() && activeMatch().id!==id){ alert("Hay otro partido en curso. Finalízalo primero."); break; }
+      if(activeMatch() && activeMatch().id!==id){ alertModal("Hay otro partido en curso", "Finalízalo primero antes de reabrir este."); break; }
       m.finalizado = false; save(); go("match",{tab:"pista"});
       break;
     }
@@ -1571,7 +1662,7 @@ document.addEventListener("click", e=>{
     /* ---- plantilla ---- */
     case "editPlayer": V = {name:"playerEdit", id}; renderPlayerEdit(); break;
     case "pickPhoto": photoTarget = id==="__new__" ? null : id;
-      if(id==="__new__"){ alert("Guarda primero el jugador y luego añade la foto."); break; }
+      if(id==="__new__"){ alertModal("Guarda primero", "Añade la foto después de guardar el jugador."); break; }
       filePick.click(); break;
     case "clearPhoto": { const p=player(id); if(p){p.foto=null; save(); renderPlayerEdit();} break; }
     case "savePlayer": {
@@ -1581,7 +1672,7 @@ document.addEventListener("click", e=>{
       if(!corto && nombre){ const pp=nombre.split(/\s+/); corto = pp[0][0]+". "+(pp[1]||""); }
       const puesto=document.getElementById("e_puesto").value;
       const cat=document.getElementById("e_cat").value;
-      if(!nombre){ alert("Pon al menos el nombre."); break; }
+      if(!nombre){ alertModal("Falta el nombre", "Pon al menos el nombre del jugador."); break; }
       if(id==="__new__"){
         S.roster.push({id:uid(), nombre, apodo, corto, puesto, cat, foto:null});
       } else {
@@ -1592,10 +1683,12 @@ document.addEventListener("click", e=>{
       break;
     }
     case "delPlayer": {
-      if(confirm("¿Eliminar de la plantilla? No afecta a partidos ya finalizados.")){
-        S.roster = S.roster.filter(p=>p.id!==id);
-        save(); go("plantilla");
-      }
+      confirmModal({title:"¿Eliminar de la plantilla?", body:"No afecta a los partidos ya finalizados.", confirmText:"Eliminar", danger:true})
+        .then(ok=>{
+          if(!ok) return;
+          S.roster = S.roster.filter(p=>p.id!==id);
+          save(); go("plantilla");
+        });
       break;
     }
     /* ---- ajustes ---- */
@@ -1610,10 +1703,11 @@ document.addEventListener("click", e=>{
     case "restore": jsonPick.click(); break;
     case "resetWeights": S.weights=defaultWeights(); save(); render(); break;
     case "wipe": {
-      if(confirm("Esto borra la plantilla y TODOS los partidos de este móvil. ¿Seguro?") &&
-         confirm("Última confirmación: no se puede deshacer.")){
-        localStorage.removeItem(KEY); S = fresh(); go("home");
-      }
+      confirmModal({title:"Borrar todos los datos", body:"Se eliminan la plantilla y TODOS los partidos guardados en este móvil. No se puede deshacer.", confirmText:"Borrar todo", danger:true})
+        .then(ok=>{
+          if(!ok) return;
+          localStorage.removeItem(KEY); S = fresh(); go("home");
+        });
       break;
     }
   }
