@@ -282,6 +282,7 @@
 <div id="printArea"></div>
 <input type="file" id="filePick" accept="image/*" class="hide">
 <input type="file" id="jsonPick" accept="application/json,.json" class="hide">
+<input type="file" id="matchPick" accept="application/json,.json" class="hide">
 
 <script>
 "use strict";
@@ -400,6 +401,7 @@ const ICON_PATHS = {
   trash:'<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4h6v3"/>',
   activity:'<path d="M22 12h-4l-3 8-6-16-3 8H2"/>',
   list:'<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.3"/><circle cx="3.5" cy="12" r="1.3"/><circle cx="3.5" cy="18" r="1.3"/>',
+  link:'<path d="m9.5 14.5 5-5"/><path d="M11 6.5 12 5.5a4 4 0 0 1 5.6 5.7l-1 1"/><path d="M13 17.5 12 18.5a4 4 0 0 1-5.6-5.7l1-1"/>',
 };
 function ic(name, size){
   size = size || 16;
@@ -676,7 +678,7 @@ function confirmModal(opts){
     ov.innerHTML = `<div class="sheet"><div class="cmodal">
       ${opts.danger?`<div class="cicon">${ic('trash',22)}</div>`:''}
       <h3>${esc(opts.title||"")}</h3>
-      ${opts.body?`<p>${esc(opts.body)}</p>`:''}
+      ${opts.body?`<p>${esc(opts.body).replace(/\n/g,"<br>")}</p>`:''}
       ${btnsHtml}
     </div></div>`;
     function done(v){ ov.remove(); resolve(v); }
@@ -922,6 +924,12 @@ function viewMatch(){
         <button class="del" data-a="delEvent" data-id="${e.id}">Borrar</button>
       </div>`;
     }).join("") : '<div class="pad muted center">Sin acciones registradas.</div>') + `</div></div>`;
+    body += `<div class="card pad" style="margin-top:10px">
+      <h2 class="sec" style="margin-top:0">Enviar a otra app</h2>
+      <p class="muted" style="margin:0 0 10px">Manda este partido (aunque no haya acabado) para que se añada en el móvil de otro delegado.</p>
+      <button class="btn soft" data-a="matchShareLink" data-id="${m.id}">${ic('link',16)} Enlace para importar</button>
+      <button class="btn soft" style="margin-top:8px" data-a="matchShareFile" data-id="${m.id}">${ic('share',15)} Archivo para importar</button>
+    </div>`;
   }
 
   const foot = `<div class="fab">
@@ -1019,6 +1027,12 @@ function viewExport(){
         <button class="btn soft sm" data-a="csv" data-id="${m.id}">${ic('download',15)} CSV</button>
       </div>
       <p class="note" style="margin-top:10px">La imagen se abre en el menú de compartir del móvil. Si no aparece, se descarga y la envías desde WhatsApp.</p>
+    </div>
+    <div class="card pad" style="margin-top:12px">
+      <h2 class="sec" style="margin-top:0">Enviar a otra app</h2>
+      <p class="muted" style="margin:0 0 10px">Manda este partido con todas sus estadísticas para que se añada solo en el móvil de otro delegado que tenga esta misma app.</p>
+      <button class="btn soft" data-a="matchShareLink" data-id="${m.id}">${ic('link',16)} Enlace para importar</button>
+      <button class="btn soft" style="margin-top:8px" data-a="matchShareFile" data-id="${m.id}">${ic('share',15)} Archivo para importar</button>
     </div>
     ${statsBlock(m, true)}
     <div class="fab"><button class="btn ghost" data-a="reopen" data-id="${m.id}">${ic('edit',15)} Volver a editar este partido</button></div>
@@ -1128,7 +1142,13 @@ function viewAjustes(){
     <div class="card pad">
       <button class="btn soft" data-a="backup">${ic('download',15)} Exportar todos los datos</button>
       <button class="btn soft" style="margin-top:8px" data-a="restore">${ic('upload',15)} Importar copia</button>
-      <p class="note" style="margin-top:10px">Guarda el archivo en Drive/WhatsApp. Sirve para cambiar de móvil o recuperar si el navegador borra los datos.</p>
+      <p class="note" style="margin-top:10px">Guarda el archivo en Drive/WhatsApp. Sirve para cambiar de móvil o recuperar si el navegador borra los datos. Esto <b>reemplaza</b> toda la plantilla y todos los partidos.</p>
+    </div>
+
+    <h2 class="sec">Recibir un partido</h2>
+    <div class="card pad">
+      <button class="btn soft" data-a="importMatchFile">${ic('upload',15)} Añadir partido desde archivo</button>
+      <p class="note" style="margin-top:10px">Para un archivo que te haya enviado otro delegado (botón "Enviar a otra app" del partido). Este <b>se añade</b> a tu lista, no borra nada.</p>
     </div>
 
     <h2 class="sec">Zona peligrosa</h2>
@@ -1436,6 +1456,118 @@ function backup(){
 }
 
 /* ============================================================
+   ENVIAR UN PARTIDO SUELTO A OTRA APP (archivo o enlace)
+   Empaqueta el partido + los jugadores que aparecen en él, para que
+   la app de otra persona lo entienda aunque su plantilla no sea igual.
+   ============================================================ */
+function matchShareJSON(m){
+  const players = m.convocados.map(id=>player(id)).filter(Boolean).map(p=>({...p, foto:null})); // sin fotos: pesan demasiado para un enlace
+  return JSON.stringify({kind:"abm-match-share", v:1, team:S.team.name, match:m, players});
+}
+function b64urlFromBytes(bytes){
+  let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function bytesFromB64url(b64u){
+  const b64 = b64u.replace(/-/g,"+").replace(/_/g,"/");
+  const bin = atob(b64 + "===".slice((b64.length+3)%4));
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes;
+}
+async function compressToB64(text){
+  try{
+    if("CompressionStream" in window){
+      const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+      const buf = await new Response(stream).arrayBuffer();
+      return {data:b64urlFromBytes(new Uint8Array(buf)), gz:true};
+    }
+  }catch(e){}
+  return {data:b64urlFromBytes(new TextEncoder().encode(text)), gz:false};
+}
+async function decompressFromB64(data, gz){
+  const bytes = bytesFromB64url(data);
+  if(gz){
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
+  }
+  return new TextDecoder().decode(bytes);
+}
+async function shareMatchFile(m){
+  const json = matchShareJSON(m);
+  const blob = new Blob([json], {type:"application/json"});
+  const filename = `partido_${(m.rival||"partido").replace(/\W+/g,"-")}_${m.fecha||""}.json`;
+  try{
+    const file = new File([blob], filename, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:"Partido: "+(m.rival||""), text:"Partido de "+S.team.name+" para importar en la app"});
+      return;
+    }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  toast("Archivo descargado", false);
+}
+async function shareMatchLink(m){
+  toast("Generando enlace…", false);
+  const json = matchShareJSON(m);
+  const {data, gz} = await compressToB64(json);
+  const url = location.origin + location.pathname + "#import=" + (gz?"gz.":"raw.") + data;
+  try{
+    if(navigator.share){
+      await navigator.share({title:"Partido: "+(m.rival||""), text:"Toca el enlace para añadir este partido en tu app", url});
+      return;
+    }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  try{
+    await navigator.clipboard.writeText(url);
+    toast("Enlace copiado · pégalo en WhatsApp", false);
+  }catch(e){
+    confirmModal({title:"Enlace del partido", body:url, onlyOk:true, confirmText:"Cerrar"});
+  }
+}
+function importMatchShare(jsonText){
+  let payload;
+  try{
+    payload = JSON.parse(jsonText);
+    if(payload.kind!=="abm-match-share" || !payload.match || !payload.match.id) throw 0;
+  }catch(e){ alertModal("Archivo no válido", "Esto no es un partido exportado desde esta app."); return; }
+  const m = payload.match;
+  if(matchById(m.id)){
+    toast("Ya tenías este partido", false);
+    go("export",{id:m.id});
+    return;
+  }
+  const s = score(m);
+  const meta = [payload.team, m.rival||"Partido", `${s.nos}-${s.riv}`, fmtDate(m.fecha)].filter(Boolean).join(" · ");
+  confirmModal({title:"¿Añadir este partido?", body:`${meta}\nSe añade a tu lista con todas sus estadísticas.`, confirmText:"Añadir"})
+    .then(ok=>{
+      if(!ok) return;
+      (payload.players||[]).forEach(p=>{ if(p && p.id && !player(p.id)) S.roster.push(p); });
+      m.finalizado = true; // se importa siempre como partido cerrado, para no chocar con uno en curso en este móvil
+      if(!m.finishedAt) m.finishedAt = Date.now();
+      S.matches.push(m);
+      save();
+      go("export",{id:m.id});
+      toast("Partido importado", false, "pos");
+    });
+}
+async function checkImportFromHash(){
+  const h = location.hash;
+  if(!h.startsWith("#import=")) return;
+  const raw = h.slice(8);
+  history.replaceState(null, "", location.pathname + location.search);
+  let gz=false, data=raw;
+  if(raw.startsWith("gz.")){ gz=true; data=raw.slice(3); }
+  else if(raw.startsWith("raw.")){ data=raw.slice(4); }
+  let json;
+  try{ json = await decompressFromB64(data, gz); }
+  catch(e){ alertModal("No se pudo leer el enlace", "El enlace del partido parece incompleto o dañado."); return; }
+  importMatchShare(json);
+}
+
+/* ============================================================
    FILE PICKERS
    ============================================================ */
 let photoTarget = null;
@@ -1485,6 +1617,14 @@ jsonPick.addEventListener("change", ()=>{
         toast("Copia importada", false);
       });
   };
+  rd.readAsText(f);
+});
+const matchPick = document.getElementById("matchPick");
+matchPick.addEventListener("change", ()=>{
+  const f = matchPick.files[0]; matchPick.value="";
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=> importMatchShare(rd.result);
   rd.readAsText(f);
 });
 
@@ -1626,6 +1766,8 @@ document.addEventListener("click", e=>{
     }
     case "printPdf": printReportHTML(matchById(id)); break;
     case "csv": csvExport(matchById(id)); break;
+    case "matchShareFile": shareMatchFile(matchById(id) || activeMatch()); break;
+    case "matchShareLink": shareMatchLink(matchById(id) || activeMatch()); break;
     case "reopen": {
       const m = matchById(id);
       if(activeMatch() && activeMatch().id!==id){ alertModal("Hay otro partido en curso", "Finalízalo primero antes de reabrir este."); break; }
@@ -1680,6 +1822,7 @@ document.addEventListener("click", e=>{
     }
     case "backup": backup(); break;
     case "restore": jsonPick.click(); break;
+    case "importMatchFile": matchPick.click(); break;
     case "wipe": {
       confirmModal({title:"Borrar todos los datos", body:"Se eliminan la plantilla y TODOS los partidos guardados en este móvil. No se puede deshacer.", confirmText:"Borrar todo", danger:true})
         .then(ok=>{
@@ -1777,6 +1920,8 @@ function drawSeason(){
 /* ---------- arranque ---------- */
 render();
 if(activeMatch()) go("match",{tab:"pista"});
+checkImportFromHash();
+window.addEventListener("hashchange", checkImportFromHash); // por si el enlace se abre en una pestaña ya cargada
 </script>
 </body>
 </html>
