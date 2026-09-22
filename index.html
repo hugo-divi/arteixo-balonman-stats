@@ -230,7 +230,6 @@
   table.st td.name,table.st th.name{text-align:left;position:sticky;left:0;background:#fff;font-weight:700;box-shadow:1px 0 0 var(--line)}
   table.st th.name{background:#f0f2f8}
   table.st tr:last-child td{border-bottom:0}
-  table.st .val{font-weight:900}
   .pos{color:var(--ok)} .neg{color:var(--bad)}
 
   .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -239,10 +238,6 @@
   .kpi .v{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
   .kpi .s{font-size:11px;color:var(--muted)}
 
-  .mvp{background:linear-gradient(135deg,var(--gold-l),var(--gold));border-radius:16px;padding:15px;color:var(--navy);
-    box-shadow:0 10px 24px rgba(224,173,0,.3),inset 0 1px 0 rgba(255,255,255,.5)}
-  .mvp .lbl{font-size:11px;font-weight:900;letter-spacing:1px}
-  .mvp .who{font-size:20px;font-weight:900;margin:2px 0}
   .hl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
   .hl:last-child{border-bottom:0}
   .hl .em{font-size:18px}
@@ -334,28 +329,28 @@ const SEED = [
 
 /* ---------- Tipos de acción ---------- */
 const ACC = {
-  gol:         {label:"Gol",             grp:"ataque",  pts:2},
-  contra:      {label:"Contraataque",    grp:"ataque",  pts:2},
-  tiroParado:  {label:"Tiro parado",     grp:"ataque",  pts:-0.25},
-  tiroFuera:   {label:"Tiro fuera",      grp:"ataque",  pts:-0.5},
-  prov7m:      {label:"7m provocado",    grp:"siete",   pts:1},
-  gol7m:       {label:"Gol de 7m",       grp:"siete",   pts:2},
-  fallo7m:     {label:"7m fallado",      grp:"siete",   pts:-0.5},
-  perdida:     {label:"Pérdida",         grp:"error",   pts:-0.25},
-  recuperacion:{label:"Recuperación",    grp:"defensa", pts:1.5},
-  blocaje:     {label:"Blocaje",         grp:"defensa", pts:1.5},
-  comete7m:    {label:"7m cometido",     grp:"defensa", pts:-1},
-  dosmin:      {label:"2 minutos",       grp:"sancion", pts:-1.5},
-  amarilla:    {label:"Amarilla",        grp:"sancion", pts:-0.25},
-  roja:        {label:"Roja",            grp:"sancion", pts:-3},
+  gol:         {label:"Gol"},
+  contra:      {label:"Contraataque"},
+  tiroParado:  {label:"Tiro parado"},
+  tiroFuera:   {label:"Tiro fuera"},
+  prov7m:      {label:"7m provocado"},
+  gol7m:       {label:"Gol de 7m"},
+  fallo7m:     {label:"7m fallado"},
+  perdida:     {label:"Pérdida"},
+  recuperacion:{label:"Recuperación"},
+  blocaje:     {label:"Blocaje"},
+  comete7m:    {label:"7m cometido"},
+  dosmin:      {label:"2 minutos"},
+  amarilla:    {label:"Amarilla"},
+  roja:        {label:"Roja"},
   // portero
-  parada:      {label:"Parada",          grp:"gk",      pts:1.5},
-  golEncajado: {label:"Gol encajado",    grp:"gk",      pts:-0.5},
-  parada7m:    {label:"Parada de 7m",    grp:"gk",      pts:2.5},
-  golEnc7m:    {label:"Gol de 7m encajado", grp:"gk",   pts:-0.25},
-  asistencia:  {label:"Asistencia",      grp:"gk",      pts:1.5},
-  golPortero:  {label:"Gol",             grp:"gk",      pts:2},
-  golRival:    {label:"Gol del rival",   grp:"rival",   pts:0},
+  parada:      {label:"Parada"},
+  golEncajado: {label:"Gol encajado"},
+  parada7m:    {label:"Parada de 7m"},
+  golEnc7m:    {label:"Gol de 7m encajado"},
+  asistencia:  {label:"Asistencia"},
+  golPortero:  {label:"Gol"},
+  golRival:    {label:"Gol del rival"},
 };
 const OURS   = ["gol","contra","gol7m","golPortero"];
 const THEIRS = ["golEncajado","golEnc7m","golRival"];
@@ -379,12 +374,12 @@ function actionCls(k){
 }
 function actionTone(tipo){
   if(tipo==="golRival") return "neg";
-  const w = S.weights[tipo]||0;
-  if(w>0) return "pos";
-  if(w<0) return "neg";
+  const cls = actionCls(tipo);
+  if(cls==="hero"||cls==="pos") return "pos";
+  if(cls==="neg") return "neg";
+  if(cls==="warn") return "warn";
   return "";
 }
-function defaultWeights(){ const w={}; for(const k in ACC) w[k]=ACC[k].pts; return w; }
 
 /* ---------- Iconos (SVG en línea, sin dependencias) ---------- */
 const ICON_PATHS = {
@@ -428,7 +423,6 @@ function fresh(){
   return {
     roster: SEED.map(p => ({...p})),
     team: {name:"Arteixo Balonmán", crest:null},
-    weights: defaultWeights(),
     matches: [],
   };
 }
@@ -436,7 +430,6 @@ function load(){
   try{
     const r = JSON.parse(localStorage.getItem(KEY));
     if(r && r.roster && r.matches){
-      r.weights = Object.assign(defaultWeights(), r.weights||{});
       r.team = Object.assign({name:"Arteixo Balonmán",crest:null}, r.team||{});
       return r;
     }
@@ -520,9 +513,8 @@ function playerStats(match, pid){
   const g7 = c("gol7m"), f7 = c("fallo7m");
   const paradas = c("parada"), enc = c("golEncajado");
   const par7 = c("parada7m"), enc7 = c("golEnc7m");
-  const val = ev.reduce((a,e)=> a + (S.weights[e.tipo]||0), 0);
   return {
-    p, ev, val,
+    p, ev,
     goles, contra:c("contra"), tp, tf, tiros, pctTiro: pct(goles, tiros),
     g7, f7, l7: g7+f7, pct7: pct(g7, g7+f7), prov7:c("prov7m"),
     perdidas:c("perdida"), recup:c("recuperacion"), blocaje:c("blocaje"),
@@ -580,24 +572,18 @@ function runs(match){
   }
   return out;
 }
-function mvpTable(match){
-  return match.convocados.map(id => ({id, p:player(id), st:playerStats(match, id)}))
-    .sort((a,b)=> b.st.val - a.st.val);
-}
 function highlights(match){
-  const rows = mvpTable(match);
+  const rows = match.convocados.map(id => ({id, p:player(id), st:playerStats(match, id)}));
   const campo = rows.filter(r => r.p.puesto==="campo");
-  const gks   = rows.filter(r => r.p.puesto==="portero");
   const best = (arr, f) => arr.slice().sort((a,b)=> f(b)-f(a))[0];
-  const mvp = rows[0] && rows[0].st.val>0 ? rows[0] : null;
   const goleador = best(campo, r => r.st.goles + r.st.g7);
   const defensor = best(campo, r => r.st.recup + r.st.blocaje);
   const asis = best(rows, r => r.st.asist);
-  const portero = gks.filter(r => (r.st.paradas + r.st.enc) >= 5)
-                     .sort((a,b)=> b.st.pctPar - a.st.pctPar)[0]
-                  || best(gks, r => r.st.paradas);
-  return {mvp, goleador, defensor, asis, portero};
+  return {goleador, defensor, asis};
 }
+/* orden de las tablas: por goles (campo) y por paradas (porteros) — sin ranking de valoración */
+function sortCampo(rows){ return rows.sort((a,b)=> (b.goles+b.g7) - (a.goles+a.g7)); }
+function sortGk(rows){ return rows.sort((a,b)=> b.paradas - a.paradas); }
 function labelPDF(p){
   const apo = p.apodo && p.apodo.toLowerCase()!==p.corto.toLowerCase() ? ` (${p.apodo})` : "";
   return p.corto + apo;
@@ -961,13 +947,13 @@ function statsBlock(m, forPrint){
   const hl = highlights(m);
   const kpi = (k,o) => `<div class="kpi"><div class="k">${k}</div><div class="v">${o.pct}%</div><div class="s">${o.n}/${o.d}</div></div>`;
   const flt = forPrint ? (ids => ids.filter(id => played(m,id))) : (ids => ids);
-  const campoRows = flt(ts.campo).map(id=>playerStats(m,id)).sort((a,b)=> b.val-a.val);
-  const gkRows = flt(ts.gk).map(id=>playerStats(m,id)).sort((a,b)=> b.val-a.val);
+  const campoRows = sortCampo(flt(ts.campo).map(id=>playerStats(m,id)));
+  const gkRows = sortGk(flt(ts.gk).map(id=>playerStats(m,id)));
 
   const tCampo = `<div class="twrap"><table class="st">
     <thead><tr>
       <th class="name">Jugador</th><th>Goles</th><th>T.par</th><th>T.fuera</th><th>%Tiro</th>
-      <th>7m G/F</th><th>7m prov</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>2m/Tj</th><th>Valor</th>
+      <th>7m G/F</th><th>7m prov</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>2m/Tj</th>
     </tr></thead><tbody>
     ${campoRows.map(r=>`<tr>
       <td class="name">${esc(labelPDF(r.p))}</td>
@@ -978,37 +964,27 @@ function statsBlock(m, forPrint){
       <td class="${r.recup?'pos':''}">${r.recup||""}</td>
       <td class="${r.blocaje?'pos':''}">${r.blocaje||""}</td>
       <td>${[r.dosmin?r.dosmin+"×2′":"",r.amarilla?"A":"",r.roja?'<span style="color:var(--bad);font-weight:900">R</span>':""].filter(Boolean).join(" ")||""}</td>
-      <td class="val ${r.val>0?'pos':r.val<0?'neg':''}">${r.val.toFixed(1)}</td>
     </tr>`).join("")}
     </tbody></table></div>`;
 
   const tGk = gkRows.length ? `<h2 class="sec">Porteros</h2><div class="twrap"><table class="st">
-    <thead><tr><th class="name">Portero</th><th>Paradas</th><th>Gol enc.</th><th>%Par</th><th>Par.7m</th><th>Gol7m enc</th><th>%7m</th><th>Asist</th><th>Gol</th><th>Valor</th></tr></thead>
+    <thead><tr><th class="name">Portero</th><th>Paradas</th><th>Gol enc.</th><th>%Par</th><th>Par.7m</th><th>Gol7m enc</th><th>%7m</th><th>Asist</th><th>Gol</th></tr></thead>
     <tbody>${gkRows.map(r=>`<tr>
       <td class="name">${esc(labelPDF(r.p))}</td>
       <td><b>${r.paradas}</b></td><td class="${r.enc?'neg':''}">${r.enc||""}</td>
       <td>${(r.paradas+r.enc)?r.pctPar+"%":"—"}</td>
       <td>${r.par7||""}</td><td>${r.enc7||""}</td><td>${(r.par7+r.enc7)?r.pctPar7+"%":"—"}</td>
       <td>${r.asist||""}</td><td>${r.golGk||""}</td>
-      <td class="val ${r.val>0?'pos':r.val<0?'neg':''}">${r.val.toFixed(1)}</td>
     </tr>`).join("")}</tbody></table></div>` : "";
 
-  const mvpBox = hl.mvp ? `<div class="mvp">
-    <div class="lbl">🏆 MVP DEL PARTIDO</div>
-    <div class="who">${esc(labelPDF(hl.mvp.p))}</div>
-    <div>Valoración ${hl.mvp.st.val.toFixed(1)} · ${hl.mvp.st.goles} goles · ${hl.mvp.st.recup+hl.mvp.st.blocaje} acc. defensivas</div>
-  </div>` : `<div class="note">MVP: se calcula cuando haya acciones suficientes.</div>`;
-
   const hlRow = (em,txt,who,val)=> who ? `<div class="hl"><span class="em">${em}</span><span>${txt}: <b style="font-weight:800">${esc(who)}</b></span><b>${val}</b></div>` : "";
-  const hlBox = `<div class="card" style="margin-top:10px">
+  const hlBox = `<div class="card">
     ${hlRow("🥇","Máximo goleador", hl.goleador && (hl.goleador.st.goles+hl.goleador.st.g7)>0 ? hl.goleador.p.apodo : "", hl.goleador?(hl.goleador.st.goles+hl.goleador.st.g7):"")}
     ${hlRow("🧱","Mejor en defensa", hl.defensor && (hl.defensor.st.recup+hl.defensor.st.blocaje)>0 ? hl.defensor.p.apodo : "", hl.defensor?(hl.defensor.st.recup+hl.defensor.st.blocaje):"")}
     ${hlRow("⚡","Más asistencias", hl.asis && hl.asis.st.asist>0 ? hl.asis.p.apodo : "", hl.asis?hl.asis.st.asist:"")}
-    ${hlRow("🧤","Portero del partido", hl.portero && (hl.portero.st.paradas+hl.portero.st.enc)>0 ? hl.portero.p.apodo : "", hl.portero&&(hl.portero.st.paradas+hl.portero.st.enc)>0 ? hl.portero.st.pctPar+"%" : "")}
   </div>`;
 
   return `
-    ${mvpBox}
     ${hlBox}
     <h2 class="sec">Porcentajes del equipo</h2>
     <div class="kpis">
@@ -1056,12 +1032,13 @@ function seasonAgg(){
   for(const m of done){
     for(const id of m.convocados){
       const st = playerStats(m,id);
-      const a = per[id] || (per[id]={p:player(id), pj:0, goles:0,g7:0,tp:0,tf:0,tiros:0,prov7:0,perdidas:0,recup:0,blocaje:0,dosmin:0,amarilla:0,roja:0,paradas:0,enc:0,par7:0,enc7:0,asist:0,golGk:0,val:0});
+      const a = per[id] || (per[id]={p:player(id), pj:0, goles:0,g7:0,tp:0,tf:0,tiros:0,prov7:0,perdidas:0,recup:0,blocaje:0,dosmin:0,amarilla:0,roja:0,paradas:0,enc:0,par7:0,enc7:0,asist:0,golGk:0});
       a.pj++;
-      for(const k of ["goles","g7","tp","tf","tiros","prov7","perdidas","recup","blocaje","dosmin","amarilla","roja","paradas","enc","par7","enc7","asist","golGk","val"]) a[k]+=st[k];
+      for(const k of ["goles","g7","tp","tf","tiros","prov7","perdidas","recup","blocaje","dosmin","amarilla","roja","paradas","enc","par7","enc7","asist","golGk"]) a[k]+=st[k];
     }
   }
-  return {done, rows:Object.values(per).sort((a,b)=> b.val-a.val)};
+  const rows = Object.values(per).sort((a,b)=> (b.goles+b.g7)-(a.goles+a.g7) || b.paradas-a.paradas);
+  return {done, rows};
 }
 function viewTemporada(){
   const {done, rows} = seasonAgg();
@@ -1069,7 +1046,7 @@ function viewTemporada(){
   let w=0,l=0,d=0, gf=0, gc=0;
   for(const m of done){ const s=score(m); gf+=s.nos; gc+=s.riv; if(s.nos>s.riv)w++;else if(s.nos<s.riv)l++;else d++; }
   const tbl = `<div class="twrap"><table class="st"><thead><tr>
-    <th class="name">Jugador</th><th>PJ</th><th>Goles</th><th>7m</th><th>T.par</th><th>T.fuera</th><th>%Tiro</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>Paradas</th><th>%Par</th><th>Valor</th>
+    <th class="name">Jugador</th><th>PJ</th><th>Goles</th><th>7m</th><th>T.par</th><th>T.fuera</th><th>%Tiro</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>Paradas</th><th>%Par</th>
   </tr></thead><tbody>
   ${rows.map(r=>`<tr>
     <td class="name">${esc(labelPDF(r.p))}</td><td>${r.pj}</td>
@@ -1078,7 +1055,6 @@ function viewTemporada(){
     <td class="${r.perdidas?'neg':''}">${r.perdidas||""}</td>
     <td class="${r.recup?'pos':''}">${r.recup||""}</td><td class="${r.blocaje?'pos':''}">${r.blocaje||""}</td>
     <td>${r.paradas||""}</td><td>${(r.paradas+r.enc)?pct(r.paradas,r.paradas+r.enc)+"%":"—"}</td>
-    <td class="val ${r.val>0?'pos':r.val<0?'neg':''}">${r.val.toFixed(1)}</td>
   </tr>`).join("")}
   </tbody></table></div>`;
   return topbar("Temporada",`<button class="hbtn" data-a="go" data-v="home">Inicio</button>`)+`<main>
@@ -1135,12 +1111,6 @@ function viewPlayerEdit(){
 
 /* ---------- AJUSTES ---------- */
 function viewAjustes(){
-  const wRows = Object.keys(ACC).filter(k=>k!=="golRival").map(k=>`
-    <div class="row" style="justify-content:space-between;padding:7px 2px;border-bottom:1px solid var(--line)">
-      <span>${esc(ACC[k].label)}</span>
-      <input type="number" step="0.25" style="width:80px;padding:6px;border:1.5px solid var(--line);border-radius:9px;text-align:right"
-        data-a="weight" data-k="${k}" value="${S.weights[k]}">
-    </div>`).join("");
   return topbar("Ajustes",`<button class="hbtn" data-a="go" data-v="home">Inicio</button>`)+`<main>
     <h2 class="sec">Equipo</h2>
     <div class="card pad">
@@ -1159,11 +1129,6 @@ function viewAjustes(){
       <button class="btn soft" data-a="backup">${ic('download',15)} Exportar todos los datos</button>
       <button class="btn soft" style="margin-top:8px" data-a="restore">${ic('upload',15)} Importar copia</button>
       <p class="note" style="margin-top:10px">Guarda el archivo en Drive/WhatsApp. Sirve para cambiar de móvil o recuperar si el navegador borra los datos.</p>
-    </div>
-
-    <h2 class="sec">Pesos de la valoración (MVP)</h2>
-    <div class="card pad">${wRows}
-      <button class="btn soft sm" style="margin-top:10px" data-a="resetWeights">Restablecer valores por defecto</button>
     </div>
 
     <h2 class="sec">Zona peligrosa</h2>
@@ -1244,8 +1209,8 @@ function drawReport(m, opts){
   const hl = highlights(m);
   const s = score(m);
   const sd = m.descansoAt ? score(m,1) : null;
-  const campoRows = ts.campo.filter(id=>played(m,id)).map(id=>playerStats(m,id)).sort((a,b)=>b.val-a.val);
-  const gkRows = ts.gk.filter(id=>played(m,id)).map(id=>playerStats(m,id)).sort((a,b)=>b.val-a.val);
+  const campoRows = sortCampo(ts.campo.filter(id=>played(m,id)).map(id=>playerStats(m,id)));
+  const gkRows = sortGk(ts.gk.filter(id=>played(m,id)).map(id=>playerStats(m,id)));
   const incPerd = opts.incPerd!==false;
 
   const R = 2;
@@ -1287,23 +1252,14 @@ function drawReport(m, opts){
   x.textAlign="left";
 
   let y = 250;
-  if(hl.mvp){
-    x.fillStyle="#ffd400"; roundRect(x,40,y,W-80,90,14); x.fill();
-    x.fillStyle="#1b2a6b"; x.font=F(14,"900"); x.fillText("🏆  MVP DEL PARTIDO", 62, y+26);
-    x.font=F(26,"900"); x.fillText(labelPDF(hl.mvp.p), 62, y+58);
-    x.textAlign="right"; x.font=F(15,"700");
-    x.fillText(`Valoración ${hl.mvp.st.val.toFixed(1)}`, W-62, y+58); x.textAlign="left";
-    y += 110;
-  }
   const dz = [
     ["🥇 Goleador", hl.goleador && (hl.goleador.st.goles+hl.goleador.st.g7)>0 ? `${hl.goleador.p.apodo} (${hl.goleador.st.goles+hl.goleador.st.g7})` : "—"],
     ["🧱 Defensa",  hl.defensor && (hl.defensor.st.recup+hl.defensor.st.blocaje)>0 ? `${hl.defensor.p.apodo} (${hl.defensor.st.recup+hl.defensor.st.blocaje})` : "—"],
     ["⚡ Asist.",   hl.asis && hl.asis.st.asist>0 ? `${hl.asis.p.apodo} (${hl.asis.st.asist})` : "—"],
-    ["🧤 Portero",  hl.portero && (hl.portero.st.paradas+hl.portero.st.enc)>0 ? `${hl.portero.p.apodo} (${hl.portero.st.pctPar}%)` : "—"],
   ];
   x.font=F(15,"");
   dz.forEach((d,i)=>{
-    const cx = 40 + i*((W-80)/4);
+    const cx = 40 + i*((W-80)/3);
     x.fillStyle="#5b6178"; x.font=F(12,"700"); x.fillText(d[0], cx, y+10);
     x.fillStyle="#171b2e"; x.font=F(16,"800"); x.fillText(d[1], cx, y+34);
   });
@@ -1357,7 +1313,6 @@ function drawReport(m, opts){
   ];
   if(incPerd) campoCols.push(["Pérd", 60, r=> r.perdidas||""]);
   campoCols.push(["2m", 45, r=> r.dosmin||""]);
-  campoCols.push(["Valor", 70, r=> r.val.toFixed(1)]);
   y = drawTable(x, 40, y, W-80, "JUGADORES DE CAMPO", campoCols, campoRows);
 
   if(gkRows.length){
@@ -1372,7 +1327,6 @@ function drawReport(m, opts){
       ["% 7m", 70, r=> (r.par7+r.enc7)? r.pctPar7+"%":"—"],
       ["Asist", 60, r=> r.asist||""],
       ["Gol", 50, r=> r.golGk||""],
-      ["Valor", 70, r=> r.val.toFixed(1)],
     ];
     y = drawTable(x, 40, y, W-80, "PORTEROS", gkCols, gkRows);
   }
@@ -1411,9 +1365,8 @@ function drawTable(x, ox, oy, tw, title, cols, rows){
     let cx2 = ox;
     cols.forEach((c,i)=>{
       const v = String(c[2](r));
-      x.font = (c[0]==="Valor") ? F(15,"900") : (c[3]==="l" ? F(15,"700") : F(15,""));
-      if(c[0]==="Valor") x.fillStyle = r.val>0 ? "#1f9d55" : r.val<0 ? "#d64545" : "#171b2e";
-      else x.fillStyle="#171b2e";
+      x.font = c[3]==="l" ? F(15,"700") : F(15,"");
+      x.fillStyle="#171b2e";
       x.textAlign = c[3]==="l" ? "left" : "center";
       x.fillText(v, c[3]==="l"? cx2+10 : cx2+cw[i]/2, y+rowH/2);
       cx2 += cw[i];
@@ -1460,9 +1413,11 @@ function csvExport(m){
   const rows = [["#Partido", (m.rival||""), fmtDate(m.fecha), m.comp||""]];
   const s = score(m); rows.push(["Resultado", s.nos, s.riv]);
   rows.push([]);
-  rows.push(["Jugador","Puesto","Goles","Contraataque","TiroParado","TiroFuera","%Tiro","Gol7m","Fallo7m","7mProvocado","Perdidas","Recuperaciones","Blocajes","7mCometido","2min","Amarillas","Rojas","Paradas","GolesEncajados","%Paradas","Parada7m","Gol7mEncajado","Asistencias","GolPortero","Valoracion"]);
-  m.convocados.map(id=>playerStats(m,id)).sort((a,b)=>b.val-a.val).forEach(r=>{
-    rows.push([r.p.nombre, r.p.puesto, r.goles, r.contra, r.tp, r.tf, r.tiros?r.pctTiro:"", r.g7, r.f7, r.prov7, r.perdidas, r.recup, r.blocaje, r.comete7, r.dosmin, r.amarilla, r.roja, r.paradas, r.enc, (r.paradas+r.enc)?r.pctPar:"", r.par7, r.enc7, r.asist, r.golGk, r.val.toFixed(2)]);
+  rows.push(["Jugador","Puesto","Goles","Contraataque","TiroParado","TiroFuera","%Tiro","Gol7m","Fallo7m","7mProvocado","Perdidas","Recuperaciones","Blocajes","7mCometido","2min","Amarillas","Rojas","Paradas","GolesEncajados","%Paradas","Parada7m","Gol7mEncajado","Asistencias","GolPortero"]);
+  const csvRows = m.convocados.map(id=>playerStats(m,id));
+  csvRows.sort((a,b)=> (b.goles+b.g7)-(a.goles+a.g7) || b.paradas-a.paradas);
+  csvRows.forEach(r=>{
+    rows.push([r.p.nombre, r.p.puesto, r.goles, r.contra, r.tp, r.tf, r.tiros?r.pctTiro:"", r.g7, r.f7, r.prov7, r.perdidas, r.recup, r.blocaje, r.comete7, r.dosmin, r.amarilla, r.roja, r.paradas, r.enc, (r.paradas+r.enc)?r.pctPar:"", r.par7, r.enc7, r.asist, r.golGk]);
   });
   const csv = rows.map(r=> r.map(c=>{ c=String(c??""); return /[",;\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(";")).join("\n");
   const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
@@ -1524,7 +1479,6 @@ jsonPick.addEventListener("change", ()=>{
       .then(ok=>{
         if(!ok) return;
         S = obj;
-        S.weights = Object.assign(defaultWeights(), S.weights||{});
         S.team = Object.assign({name:"Arteixo Balonmán",crest:null}, S.team||{});
         preloadCrest();
         save(); go("home");
@@ -1546,10 +1500,6 @@ function readDraftInputs(){
 }
 document.addEventListener("input", e=>{
   const t = e.target;
-  if(t.dataset.a==="weight"){
-    const v = parseFloat(t.value);
-    if(!isNaN(v)){ S.weights[t.dataset.k]=v; save(); }
-  }
   if(V.name==="nuevo" && V.draft){
     if(t.id==="f_rival") V.draft.rival = t.value;
     if(t.id==="f_comp")  V.draft.comp  = t.value;
@@ -1730,7 +1680,6 @@ document.addEventListener("click", e=>{
     }
     case "backup": backup(); break;
     case "restore": jsonPick.click(); break;
-    case "resetWeights": S.weights=defaultWeights(); save(); render(); break;
     case "wipe": {
       confirmModal({title:"Borrar todos los datos", body:"Se eliminan la plantilla y TODOS los partidos guardados en este móvil. No se puede deshacer.", confirmText:"Borrar todo", danger:true})
         .then(ok=>{
@@ -1793,7 +1742,7 @@ function drawSeason(){
     ["Jugador",240,r=>labelPDF(r.p),"l"],["PJ",50,r=>r.pj],["Goles",70,r=>r.goles],["7m",50,r=>r.g7||""],
     ["%Tiro",70,r=> r.tiros? pct(r.goles,r.tiros)+"%":"—"],["Pérd",60,r=>r.perdidas||""],
     ["Recup",65,r=>r.recup||""],["Bloc",55,r=>r.blocaje||""],["Paradas",80,r=>r.paradas||""],
-    ["%Par",70,r=> (r.paradas+r.enc)? pct(r.paradas,r.paradas+r.enc)+"%":"—"],["Valor",70,r=>r.val.toFixed(1)],
+    ["%Par",70,r=> (r.paradas+r.enc)? pct(r.paradas,r.paradas+r.enc)+"%":"—"],
   ];
   y = drawTable(x,40,y,W-80,"ACUMULADO POR JUGADOR",cols,rows);
   y+=26; x.fillStyle="#9aa0b4"; x.font=F(12,""); x.fillText(`Generado ${new Date().toLocaleString("es-ES")}`,40,y);
