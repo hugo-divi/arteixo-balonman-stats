@@ -554,6 +554,16 @@ function teamStats(match){
   };
 }
 
+/* Estadísticas del equipo por parte; null si no hay acciones en la 2ª parte */
+function partStats(m){
+  if(!m.events.some(e=>e.periodo===2)) return null;
+  const one = per => {
+    const sub = {...m, events: m.events.filter(e=>e.periodo===per)};
+    const t = teamStats(sub), s = score(sub);
+    return {nos:s.nos, riv:s.riv, perd:t.perdidas, tiro:t.tiro, par:t.paradas};
+  };
+  return [one(1), one(2)];
+}
 function score(match, period){
   const f = e => (!period || e.periodo===period);
   return {
@@ -1010,6 +1020,23 @@ function viewMatch(){
   </main>`;
 }
 
+function partRows(m){
+  const ps = partStats(m); if(!ps) return null;
+  const f = o => o.d ? o.pct+"%" : "—";
+  return [
+    ["Goles (a favor–en contra)", ps.map(x=>`${x.nos}–${x.riv}`)],
+    ["Pérdidas", ps.map(x=>String(x.perd))],
+    ["% Tiro", ps.map(x=>f(x.tiro))],
+    ["% Paradas", ps.map(x=>f(x.par))],
+  ];
+}
+function partsBlock(m){
+  const rows = partRows(m); if(!rows) return "";
+  return `<h2 class="sec">Por partes</h2><div class="twrap"><table class="st"><thead><tr>
+    <th class="name"></th><th>1ª parte</th><th>2ª parte</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td class="name">${r[0]}</td><td>${r[1][0]}</td><td>${r[1][1]}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
 function statsBlock(m, forPrint){
   const ts = teamStats(m);
   const hl = highlights(m);
@@ -1061,6 +1088,7 @@ function statsBlock(m, forPrint){
       ${kpi("Paradas portería", ts.paradas)}
       ${kpi("Paradas de 7m", ts.paradas7)}
     </div>
+    ${partsBlock(m)}
     <div class="kpis" style="margin-top:8px">
       <div class="kpi"><div class="k">Pérdidas del equipo</div><div class="v">${ts.perdidas}</div></div>
       <div class="kpi"><div class="k">Contraataques recibidos</div><div class="v">${ts.caRecibidos}</div></div>
@@ -1393,6 +1421,25 @@ function drawReport(m, opts){
     x.fillStyle="#5b6178"; x.font=F(12,""); x.fillText(`${k[1].n}/${k[1].d}`, cx+12, y+62);
   });
   y += 98;
+
+  const prow = partRows(m);
+  if(prow){
+    x.fillStyle="#5b6178"; x.font=F(13,"800"); x.fillText("POR PARTES", 40, y+8); y+=24;
+    const lw = 360, cw2 = (W-80-lw)/2;
+    x.fillStyle="#f0f2f8"; x.fillRect(40,y,W-80,34);
+    x.fillStyle="#5b6178"; x.font=F(12,"800"); x.textAlign="center";
+    x.fillText("1ª PARTE", 40+lw+cw2/2, y+17); x.fillText("2ª PARTE", 40+lw+cw2*1.5, y+17);
+    y += 34;
+    prow.forEach((r,i)=>{
+      if(i%2){ x.fillStyle="#fafbfd"; x.fillRect(40,y,W-80,38); }
+      x.textAlign="left"; x.fillStyle="#171b2e"; x.font=F(15,"700"); x.fillText(r[0], 50, y+19);
+      x.textAlign="center"; x.font=F(16,"800");
+      x.fillText(r[1][0], 40+lw+cw2/2, y+19); x.fillText(r[1][1], 40+lw+cw2*1.5, y+19);
+      y += 38;
+    });
+    x.textAlign="left";
+    y += 24;
+  }
 
   // Línea de tiempo / parciales
   const goalsSeq = m.events.filter(e => OURS.includes(e.tipo) || THEIRS.includes(e.tipo));
