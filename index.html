@@ -158,6 +158,8 @@
   .gkbtn.save{background:linear-gradient(180deg,#eafbf1,#dcf6e7);color:#177a42;border-color:#bfead2}
   .gkbtn.conc{background:linear-gradient(180deg,#fff0f0,#ffe1e1);color:#b83a3a;border-color:#f3c6c6}
   .gkbtn.riv{grid-column:1/-1;background:linear-gradient(180deg,#fff0f0,#ffe1e1);color:#b83a3a;border-color:#f3c6c6}
+  .gkbtn.riv.big{padding:18px 8px;font-size:16px}
+  .gkbtn.riv.sm{padding:11px 8px;font-size:13px;font-weight:700}
   .gkbtn:active{transform:translateY(1px);filter:brightness(.96)}
 
   /* ---------- Tabs ---------- */
@@ -295,13 +297,9 @@ const KEY = "abm_stats_v1";
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(16).slice(2));
 
 /* ---------- Plantilla precargada ---------- */
-/* NOTA: esta es la copia PÚBLICA (GitHub Pages). Por privacidad de los juveniles
-   (menores de edad) no lleva nombres completos: los senior muestran inicial+apellido
-   (nivel habitual en una web de liga) y los juveniles solo el apodo. Cada delegado
-   puede escribir el nombre completo real desde "Plantilla" en su propio móvil: ese
-   dato se queda únicamente en su navegador, nunca se sube a este repositorio. */
 const SEED = [
   // seniors
+  ["anton","Antón","Tony","Antón","campo","senior"],
   ["roi","R. Fernández","Roi","R. Fernández","campo","senior"],
   ["teo","T. López","Teo","T. López","campo","senior"],
   ["xoel-insua","X. Insua","Xoel Insua","X. Insua","campo","senior"],
@@ -349,12 +347,13 @@ const ACC = {
   golEncajado: {label:"Gol encajado"},
   parada7m:    {label:"Parada de 7m"},
   golEnc7m:    {label:"Gol de 7m encajado"},
+  golEncCA:    {label:"Gol de contraataque encajado"},
   asistencia:  {label:"Asistencia"},
   golPortero:  {label:"Gol"},
   golRival:    {label:"Gol del rival"},
 };
 const OURS   = ["gol","contra","gol7m","golPortero"];
-const THEIRS = ["golEncajado","golEnc7m","golRival"];
+const THEIRS = ["golEncajado","golEnc7m","golEncCA","golRival"];
 const FIELD_GROUPS = [
   ["Ataque", ["gol","contra","tiroParado","tiroFuera"]],
   ["7 metros", ["prov7m","gol7m","fallo7m"]],
@@ -362,14 +361,14 @@ const FIELD_GROUPS = [
   ["Sanciones", ["comete7m","dosmin","amarilla","roja"]],
 ];
 const GK_GROUPS = [
-  ["Portería", ["parada","golEncajado","parada7m","golEnc7m"]],
+  ["Portería", ["parada","golEncajado","parada7m","golEnc7m","golEncCA"]],
   ["Ataque del portero", ["asistencia","golPortero"]],
   ["Otros", ["perdida","dosmin","amarilla","roja"]],
 ];
 function actionCls(k){
   if(k==="gol") return "hero";
   if(["contra","gol7m","golPortero","recuperacion","blocaje","parada","parada7m","asistencia","prov7m"].includes(k)) return "pos";
-  if(["tiroFuera","tiroParado","perdida","fallo7m","comete7m","golEncajado","golEnc7m","roja"].includes(k)) return "neg";
+  if(["tiroFuera","tiroParado","perdida","fallo7m","comete7m","golEncajado","golEnc7m","golEncCA","roja"].includes(k)) return "neg";
   if(["dosmin","amarilla"].includes(k)) return "warn";
   return "";
 }
@@ -513,11 +512,12 @@ function playerStats(match, pid){
   const tp = c("tiroParado"), tf = c("tiroFuera");
   const tiros   = goles + tp + tf;
   const g7 = c("gol7m"), f7 = c("fallo7m");
-  const paradas = c("parada"), enc = c("golEncajado");
+  const encCA = c("golEncCA");
+  const paradas = c("parada"), enc = c("golEncajado") + encCA;
   const par7 = c("parada7m"), enc7 = c("golEnc7m");
   return {
-    p, ev,
-    goles, contra:c("contra"), tp, tf, tiros, pctTiro: pct(goles, tiros),
+    p, ev, encCA,
+    goles, golesTot: goles + g7, contra:c("contra"), tp, tf, tiros, pctTiro: pct(goles, tiros),
     g7, f7, l7: g7+f7, pct7: pct(g7, g7+f7), prov7:c("prov7m"),
     perdidas:c("perdida"), recup:c("recuperacion"), blocaje:c("blocaje"),
     comete7:c("comete7m"), dosmin:c("dosmin"), amarilla:c("amarilla"), roja:c("roja"),
@@ -537,8 +537,10 @@ function teamStats(match){
   const g7 = sum(campo.concat(gk),"g7"), l7 = sum(campo.concat(gk),"l7");
   const paradas = sum(gk,"paradas"), enc = sum(gk,"enc");
   const par7 = sum(gk,"par7"), enc7 = sum(gk,"enc7");
+  const perdidas = match.events.filter(e => e.tipo==="perdida").length;
+  const caRecibidos = match.events.filter(e => e.tipo==="golEncCA").length;
   return {
-    campo, gk,
+    campo, gk, perdidas, caRecibidos,
     tiro:{n:golesJuego, d:tiros, pct:pct(golesJuego,tiros)},
     siete:{n:g7, d:l7, pct:pct(g7,l7)},
     paradas:{n:paradas, d:paradas+enc, pct:pct(paradas,paradas+enc)},
@@ -693,6 +695,41 @@ function confirmModal(opts){
 }
 function alertModal(title, body){ return confirmModal({title, body, onlyOk:true}); }
 
+/* Alta rápida de un jugador no inscrito: se añade a la plantilla (juvenil) y al partido/convocatoria actual */
+function quickPlayerModal(){
+  const ov = document.createElement("div"); ov.className="overlay"; ov.id="confirmOv";
+  ov.innerHTML = `<div class="sheet"><div class="cmodal">
+    <h3>Jugador nuevo</h3>
+    <p>Para quien juega hoy y aún no está en la plantilla. Podrás completar sus datos luego en Plantilla.</p>
+    <div class="field"><label>Nombre / apodo</label><input type="text" id="qp_nombre" placeholder="Ej.: Pablo"></div>
+    <div class="seg" id="qp_puesto" style="margin-bottom:12px">
+      <button data-qp="campo" class="on">Campo</button><button data-qp="portero">Portero</button>
+    </div>
+    <div class="crow"><button class="btn ghost" data-qp="cancel">Cancelar</button><button class="btn gold" data-qp="ok">Añadir</button></div>
+  </div></div>`;
+  ov.addEventListener("click", e=>{
+    if(e.target===ov) return ov.remove();
+    const b = e.target.closest("[data-qp]"); if(!b) return;
+    const v = b.dataset.qp;
+    if(v==="cancel") return ov.remove();
+    if(v==="campo"||v==="portero"){
+      ov.querySelectorAll("#qp_puesto button").forEach(x=>x.classList.toggle("on", x===b));
+      return;
+    }
+    const nombre = document.getElementById("qp_nombre").value.trim();
+    if(!nombre){ document.getElementById("qp_nombre").focus(); return; }
+    const puesto = ov.querySelector("#qp_puesto .on").dataset.qp;
+    const p = {id:uid(), nombre, apodo:nombre, corto:nombre, puesto, cat:"juvenil", foto:null};
+    S.roster.push(p);
+    const m = activeMatch();
+    if(V.name==="match" && m) m.convocados.push(p.id);
+    else if(V.draft){ V.draft.conv.add(p.id); V.draft.juv = true; }
+    save(); ov.remove(); toast("Añadido: "+nombre, false); render();
+  });
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const i=document.getElementById("qp_nombre"); if(i) i.focus(); }, 50);
+}
+
 /* ============================================================
    RENDER
    ============================================================ */
@@ -810,6 +847,7 @@ function viewNuevo(){
       <span class="chk ${d.juv?'on':''}">${d.juv?'✓':''}</span>
     </div>
     ${d.juv ? `<div class="card" style="margin-top:8px"><div class="plist">${list(juvs)}</div></div>` : ""}
+    <button class="btn soft" style="margin-top:10px" data-a="quickPlayer">${ic('plus',16)} Jugador nuevo (sin inscribir)</button>
 
     <h2 class="sec">Alineación inicial <span class="soft">(solo informativo)</span></h2>
     <div class="card pad">
@@ -854,11 +892,12 @@ function viewMatch(){
     ${gks.length>1 ? `<button class="gkswitch" data-a="gkSwitchBtn">${ic('swap',14)} Cambiar</button>` : ''}
   </div>`;
   const gkbtns = `${gkHead}<div class="gkgrid">
+    <button class="gkbtn riv big" data-a="gk" data-tipo="golEncajado">🥅 Gol encajado</button>
     <button class="gkbtn save" data-a="gk" data-tipo="parada">🧤 Parada</button>
-    <button class="gkbtn conc" data-a="gk" data-tipo="golEncajado">🥅 Gol encajado</button>
     <button class="gkbtn save" data-a="gk" data-tipo="parada7m">🧤 Parada 7m</button>
     <button class="gkbtn conc" data-a="gk" data-tipo="golEnc7m">🥅 Gol 7m encajado</button>
-    <button class="gkbtn riv" data-a="rivgoal">${ic('plus',15)} Gol del rival (sin portero)</button>
+    <button class="gkbtn conc" data-a="gk" data-tipo="golEncCA">⚡ Contraataque</button>
+    <button class="gkbtn riv sm" data-a="rivgoal">${ic('plus',15)} Gol del rival (sin portero)</button>
   </div>`;
 
   const tabs = `<div class="tabs">
@@ -884,7 +923,8 @@ function viewMatch(){
           <span class="full">${esc(p.corto)}</span>
         </button>`;
       }).join("") + `</div>`;
-      if(!m.convocados.length) body += `<div class="note">No hay convocados. Añade jugadores desde Plantilla.</div>`;
+      body += `<button class="btn soft sm" style="margin-top:10px" data-a="quickPlayer">${ic('plus',14)} Jugador nuevo</button>`;
+      if(!m.convocados.length) body +=`<div class="note">No hay convocados. Añade jugadores desde Plantilla.</div>`;
     } else {
       body += FIELD_GROUPS.map(([h,keys])=> `<div class="agroup"><h4>${h}</h4><div class="agrid">
         ${keys.map(k=>`<button class="abtn ${actionCls(k)}" data-a="pickForAction" data-tipo="${k}">${ACC[k].label}</button>`).join("")}
@@ -961,13 +1001,13 @@ function statsBlock(m, forPrint){
   const tCampo = `<div class="twrap"><table class="st">
     <thead><tr>
       <th class="name">Jugador</th><th>Goles</th><th>T.par</th><th>T.fuera</th><th>%Tiro</th>
-      <th>7m G/F</th><th>7m prov</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>2m/Tj</th>
+      <th>7m</th><th>7m prov</th><th>Pérd</th><th>Recup</th><th>Bloc</th><th>2m/Tj</th>
     </tr></thead><tbody>
     ${campoRows.map(r=>`<tr>
       <td class="name">${esc(labelPDF(r.p))}</td>
-      <td><b>${r.goles}</b>${r.contra?` <span class="muted">(${r.contra}CA)</span>`:""}</td>
+      <td><b>${r.golesTot}</b>${r.contra?` <span class="muted">(${r.contra}CA)</span>`:""}</td>
       <td>${r.tp||""}</td><td>${r.tf||""}</td><td>${r.tiros?r.pctTiro+"%":"—"}</td>
-      <td>${r.l7?`${r.g7}/${r.f7}`:"—"}</td><td>${r.prov7||""}</td>
+      <td>${r.l7?`${r.g7}/${r.l7}`:"—"}</td><td>${r.prov7||""}</td>
       <td class="${r.perdidas?'neg':''}">${r.perdidas||""}</td>
       <td class="${r.recup?'pos':''}">${r.recup||""}</td>
       <td class="${r.blocaje?'pos':''}">${r.blocaje||""}</td>
@@ -1000,6 +1040,10 @@ function statsBlock(m, forPrint){
       ${kpi("Acierto en 7m", ts.siete)}
       ${kpi("Paradas portería", ts.paradas)}
       ${kpi("Paradas de 7m", ts.paradas7)}
+    </div>
+    <div class="kpis" style="margin-top:8px">
+      <div class="kpi"><div class="k">Pérdidas del equipo</div><div class="v">${ts.perdidas}</div></div>
+      <div class="kpi"><div class="k">Contraataques recibidos</div><div class="v">${ts.caRecibidos}</div></div>
     </div>
     <h2 class="sec">Jugadores de campo</h2>
     ${tCampo}
@@ -1034,6 +1078,11 @@ function viewExport(){
       <button class="btn soft" data-a="matchShareLink" data-id="${m.id}">${ic('link',16)} Enlace para importar</button>
       <button class="btn soft" style="margin-top:8px" data-a="matchShareFile" data-id="${m.id}">${ic('share',15)} Archivo para importar</button>
     </div>
+    <div class="card pad" style="margin-top:12px">
+      <h2 class="sec" style="margin-top:0">Copia de seguridad</h2>
+      <p class="muted" style="margin:0 0 10px">Guarda todos los partidos en un archivo (Drive/WhatsApp). Si el navegador borra los datos, se recuperan desde Ajustes → Importar copia.</p>
+      <button class="btn soft" data-a="backup">${ic('download',15)} Guardar copia ahora</button>
+    </div>
     ${statsBlock(m, true)}
     <div class="fab"><button class="btn ghost" data-a="reopen" data-id="${m.id}">${ic('edit',15)} Volver a editar este partido</button></div>
   </main>`;
@@ -1054,6 +1103,29 @@ function seasonAgg(){
   const rows = Object.values(per).sort((a,b)=> (b.goles+b.g7)-(a.goles+a.g7) || b.paradas-a.paradas);
   return {done, rows};
 }
+/* Evolución partido a partido: cada valor con flecha respecto al partido anterior */
+function evolucionBlock(done){
+  const ms = done.slice().sort((a,b)=> (a.fecha||"").localeCompare(b.fecha||"") || a.created-b.created);
+  const rows = ms.map(m=>{ const t=teamStats(m), s=score(m);
+    return {m, s, tiro:t.tiro.d?t.tiro.pct:null, par:t.paradas.d?t.paradas.pct:null, perd:t.perdidas}; });
+  // good = true si subir es bueno
+  const cell = (v, prev, good, suf) => {
+    if(v===null) return "<td>—</td>";
+    let a = "";
+    if(prev!==null && prev!==undefined && v!==prev){
+      const up = v>prev, ok = up===good;
+      a = ` <span class="${ok?'pos':'neg'}" style="font-size:11px">${up?'▲':'▼'}</span>`;
+    }
+    return `<td>${v}${suf||""}${a}</td>`;
+  };
+  return `<h2 class="sec">Evolución partido a partido</h2><div class="twrap"><table class="st"><thead><tr>
+    <th class="name">Rival</th><th>Res.</th><th>%Tiro</th><th>%Par</th><th>Pérd</th></tr></thead><tbody>
+    ${rows.map((r,i)=>{ const p=rows[i-1];
+      return `<tr><td class="name">${esc(r.m.rival||"Rival")}</td><td>${r.s.nos}–${r.s.riv}</td>
+        ${cell(r.tiro,p&&p.tiro,true,"%")}${cell(r.par,p&&p.par,true,"%")}${cell(r.perd,p&&p.perd,false)}</tr>`; }).join("")}
+    </tbody></table></div>
+    <p class="note" style="margin-top:6px">Las flechas comparan con el partido anterior (verde = mejora).</p>`;
+}
 function viewTemporada(){
   const {done, rows} = seasonAgg();
   if(!done.length) return topbar("Temporada",`<button class="hbtn" data-a="go" data-v="home">Inicio</button>`)+`<main><div class="note">Aún no hay partidos finalizados.</div></main>`;
@@ -1064,7 +1136,7 @@ function viewTemporada(){
   </tr></thead><tbody>
   ${rows.map(r=>`<tr>
     <td class="name">${esc(labelPDF(r.p))}</td><td>${r.pj}</td>
-    <td><b>${r.goles}</b></td><td>${r.g7||""}</td><td>${r.tp||""}</td><td>${r.tf||""}</td>
+    <td><b>${r.goles+r.g7}</b></td><td>${r.g7||""}</td><td>${r.tp||""}</td><td>${r.tf||""}</td>
     <td>${r.tiros?pct(r.goles,r.tiros)+"%":"—"}</td>
     <td class="${r.perdidas?'neg':''}">${r.perdidas||""}</td>
     <td class="${r.recup?'pos':''}">${r.recup||""}</td><td class="${r.blocaje?'pos':''}">${r.blocaje||""}</td>
@@ -1076,6 +1148,7 @@ function viewTemporada(){
       <div class="kpi"><div class="k">Partidos</div><div class="v">${done.length}</div><div class="s">${w}V · ${d}E · ${l}D</div></div>
       <div class="kpi"><div class="k">Goles</div><div class="v">${gf}–${gc}</div><div class="s">media ${(gf/done.length).toFixed(1)}–${(gc/done.length).toFixed(1)}</div></div>
     </div>
+    ${evolucionBlock(done)}
     <h2 class="sec">Acumulado por jugador</h2>
     ${tbl}
     <div class="fab"><button class="btn gold" data-a="seasonPng">${ic('share',16)} Compartir imagen</button></div>
@@ -1275,7 +1348,7 @@ function drawReport(m, opts){
   const dz = [
     ["🥇 Goleador", hl.goleador && (hl.goleador.st.goles+hl.goleador.st.g7)>0 ? `${hl.goleador.p.apodo} (${hl.goleador.st.goles+hl.goleador.st.g7})` : "—"],
     ["🧱 Defensa",  hl.defensor && (hl.defensor.st.recup+hl.defensor.st.blocaje)>0 ? `${hl.defensor.p.apodo} (${hl.defensor.st.recup+hl.defensor.st.blocaje})` : "—"],
-    ["⚡ Asist.",   hl.asis && hl.asis.st.asist>0 ? `${hl.asis.p.apodo} (${hl.asis.st.asist})` : "—"],
+    ["📉 Pérdidas del equipo", String(ts.perdidas)],
   ];
   x.font=F(15,"");
   dz.forEach((d,i)=>{
@@ -1323,11 +1396,11 @@ function drawReport(m, opts){
 
   const campoCols = [
     ["Jugador", 250, r=>labelPDF(r.p), "l"],
-    ["Goles", 62, r=> r.contra? `${r.goles} (${r.contra})` : String(r.goles)],
+    ["Goles", 62, r=> r.contra? `${r.golesTot} (${r.contra})` : String(r.golesTot)],
     ["T.par", 58, r=> r.tp||""],
     ["T.fuera", 66, r=> r.tf||""],
     ["% Tiro", 70, r=> r.tiros? r.pctTiro+"%":"—"],
-    ["7m G/F", 70, r=> r.l7? `${r.g7}/${r.f7}`:"—"],
+    ["7m", 70, r=> r.l7? `${r.g7}/${r.l7}`:"—"],
     ["Recup", 62, r=> r.recup||""],
     ["Bloc", 55, r=> r.blocaje||""],
   ];
@@ -1433,11 +1506,11 @@ function csvExport(m){
   const rows = [["#Partido", (m.rival||""), fmtDate(m.fecha), m.comp||""]];
   const s = score(m); rows.push(["Resultado", s.nos, s.riv]);
   rows.push([]);
-  rows.push(["Jugador","Puesto","Goles","Contraataque","TiroParado","TiroFuera","%Tiro","Gol7m","Fallo7m","7mProvocado","Perdidas","Recuperaciones","Blocajes","7mCometido","2min","Amarillas","Rojas","Paradas","GolesEncajados","%Paradas","Parada7m","Gol7mEncajado","Asistencias","GolPortero"]);
+  rows.push(["Jugador","Puesto","GolesTotales","Contraataque","TiroParado","TiroFuera","%Tiro","Gol7m","Fallo7m","7mProvocado","Perdidas","Recuperaciones","Blocajes","7mCometido","2min","Amarillas","Rojas","Paradas","GolesEncajados","%Paradas","Parada7m","Gol7mEncajado","Asistencias","GolPortero"]);
   const csvRows = m.convocados.map(id=>playerStats(m,id));
   csvRows.sort((a,b)=> (b.goles+b.g7)-(a.goles+a.g7) || b.paradas-a.paradas);
   csvRows.forEach(r=>{
-    rows.push([r.p.nombre, r.p.puesto, r.goles, r.contra, r.tp, r.tf, r.tiros?r.pctTiro:"", r.g7, r.f7, r.prov7, r.perdidas, r.recup, r.blocaje, r.comete7, r.dosmin, r.amarilla, r.roja, r.paradas, r.enc, (r.paradas+r.enc)?r.pctPar:"", r.par7, r.enc7, r.asist, r.golGk]);
+    rows.push([r.p.nombre, r.p.puesto, r.golesTot, r.contra, r.tp, r.tf, r.tiros?r.pctTiro:"", r.g7, r.f7, r.prov7, r.perdidas, r.recup, r.blocaje, r.comete7, r.dosmin, r.amarilla, r.roja, r.paradas, r.enc, (r.paradas+r.enc)?r.pctPar:"", r.par7, r.enc7, r.asist, r.golGk]);
   });
   const csv = rows.map(r=> r.map(c=>{ c=String(c??""); return /[",;\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(";")).join("\n");
   const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
@@ -1671,6 +1744,7 @@ document.addEventListener("click", e=>{
       s.has(id) ? s.delete(id) : s.add(id);
       render(); break;
     }
+    case "quickPlayer": readDraftInputs(); quickPlayerModal(); break;
     case "toggleJuv": V.draft.juv = !V.draft.juv; render(); break;
     case "setSede": V.draft.sede = b.dataset.sede; render(); break;
     case "pick": {
@@ -1882,7 +1956,7 @@ function drawSeason(){
   x.fillText(`${done.length} partidos · ${w}V ${d}E ${l}D · goles ${gf}-${gc}`, 40, 92);
   let y=190;
   const cols=[
-    ["Jugador",240,r=>labelPDF(r.p),"l"],["PJ",50,r=>r.pj],["Goles",70,r=>r.goles],["7m",50,r=>r.g7||""],
+    ["Jugador",240,r=>labelPDF(r.p),"l"],["PJ",50,r=>r.pj],["Goles",70,r=>r.goles+r.g7],["7m",50,r=>r.g7||""],
     ["%Tiro",70,r=> r.tiros? pct(r.goles,r.tiros)+"%":"—"],["Pérd",60,r=>r.perdidas||""],
     ["Recup",65,r=>r.recup||""],["Bloc",55,r=>r.blocaje||""],["Paradas",80,r=>r.paradas||""],
     ["%Par",70,r=> (r.paradas+r.enc)? pct(r.paradas,r.paradas+r.enc)+"%":"—"],
@@ -1914,8 +1988,18 @@ function drawSeason(){
       changed = true;
     }
   }
+  // jugadores añadidos a la plantilla después del lanzamiento (una sola vez, no resucita a los borrados)
+  S.seedAdds = S.seedAdds || [];
+  for(const sp of SEED.filter(x => x.id==="anton")){
+    if(!S.seedAdds.includes(sp.id)){
+      S.seedAdds.push(sp.id);
+      if(!S.roster.some(r=>r.id===sp.id)) S.roster.push({...sp});
+      changed = true;
+    }
+  }
   if(changed) save();
 })();
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
 /* ---------- arranque ---------- */
 render();
