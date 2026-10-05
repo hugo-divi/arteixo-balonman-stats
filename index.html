@@ -174,6 +174,12 @@
   .court{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pcard{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px 6px 9px;display:flex;flex-direction:column;
     align-items:center;gap:5px;box-shadow:var(--shadow);position:relative}
+  .recent{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin:0 -2px;scrollbar-width:none}
+  .recent::-webkit-scrollbar{display:none}
+  .rchip{flex:none;display:flex;align-items:center;gap:7px;padding:5px 13px 5px 5px;border-radius:999px;background:#fff;
+    border:1px solid var(--line);box-shadow:var(--shadow);font-weight:800;font-size:13px;color:var(--navy)}
+  .rchip:active{background:#f7f8fc;transform:translateY(1px)}
+  .rlabel{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:2px 0 6px}
   .pcard:active{transform:translateY(1px);background:#f7f8fc}
   .pcard.sel{outline:2px solid var(--gold)}
   .pcard .nick{font-weight:800;font-size:13px;text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -576,6 +582,15 @@ function runs(match){
   }
   return out;
 }
+/* ids de jugadores ordenados por su última acción (más reciente primero) */
+function recentPlayers(match, max){
+  const out = [];
+  for(let i=match.events.length-1;i>=0 && out.length<max;i--){
+    const j = match.events[i].jugador;
+    if(j && !out.includes(j) && match.convocados.includes(j) && player(j)) out.push(j);
+  }
+  return out;
+}
 function highlights(match){
   const rows = match.convocados.map(id => ({id, p:player(id), st:playerStats(match, id)}));
   const campo = rows.filter(r => r.p.puesto==="campo");
@@ -913,6 +928,11 @@ function viewMatch(){
       <button data-a="pistaMode" data-m="acciones" class="${mode==='acciones'?'on':''}">${ic('bolt',15)} Acciones</button>
     </div>`;
     if(mode==="jugadores"){
+      const rec = recentPlayers(m, 7);
+      if(rec.length) body += `<div class="rlabel">Recientes</div><div class="recent">` + rec.map(id=>{
+        const p=player(id);
+        return `<button class="rchip" data-a="player" data-id="${id}">${avatar(p)}${esc(p.apodo)}</button>`;
+      }).join("") + `</div>`;
       body += `<div class="court">` + m.convocados.map(id=>{
         const p=player(id);
         const tit = (m.titulares.campo||[]).includes(id) || m.titulares.portero===id;
@@ -1257,7 +1277,9 @@ function closeSheet(){ const o=document.getElementById("sheetOv"); if(o) o.remov
 /* ---------- Acciones rápidas por tipo (elige acción → elige jugador) ---------- */
 function openActionPicker(tipo){
   const m = activeMatch(); if(!m) return;
-  const ids = m.convocados.filter(id=>player(id).puesto==="campo");
+  const rec = recentPlayers(m, 99);
+  const ids = m.convocados.filter(id=>player(id).puesto==="campo")
+    .sort((a,b)=> (rec.indexOf(a)<0?999:rec.indexOf(a)) - (rec.indexOf(b)<0?999:rec.indexOf(b)));
   const ov = document.createElement("div"); ov.className="overlay"; ov.id="sheetOv";
   ov.innerHTML = `<div class="sheet">
     <div class="shhead"><div class="nick">${esc(ACC[tipo].label)}</div><div class="muted">Elige jugador</div><button class="x" data-a="closeSheet">Cerrar</button></div>
